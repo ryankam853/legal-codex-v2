@@ -1,0 +1,153 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum TextStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AnnotationType {
+  NOTE
+  COMMENT
+  REFERENCE
+  TRANSLATION
+}
+
+enum AnnotationStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  status    UserStatus @default(PENDING_APPROVAL)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // 關聯
+  userRoles     UserRole[]
+  legalTexts    LegalText[]
+  annotations   Annotation[]
+  loginLogs     LoginLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String @id @default(uuid())
+  name        String @unique
+  description String?
+  permissions Json
+
+  // 關聯
+  userRoles UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId    String
+  roleId    String
+  grantedAt DateTime @default(now()) @map("granted_at")
+
+  // 關聯
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model LegalText {
+  id              String     @id @default(uuid())
+  titleZh         String     @map("title_zh")
+  titlePt         String?    @map("title_pt")
+  lawNumber       String?    @map("law_number")
+  category        String?
+  publicationDate DateTime?  @map("publication_date")
+  contentId       String?    @map("content_id") // MongoDB ObjectId
+  sourceUrl       String?    @map("source_url")
+  hash            String?    @unique // 防重複
+  authorId        String     @map("author_id")
+  isPublic        Boolean    @default(false) @map("is_public")
+  status          TextStatus @default(DRAFT)
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  // 關聯
+  author      User         @relation(fields: [authorId], references: [id])
+  annotations Annotation[]
+
+  // 索引
+  @@index([titleZh])
+  @@index([category])
+  @@index([publicationDate])
+  @@index([status, isPublic])
+  @@map("legal_texts")
+}
+
+model Annotation {
+  id            String           @id @default(uuid())
+  textId        String           @map("text_id")
+  authorId      String           @map("author_id")
+  startOffset   Int              @map("start_offset")
+  endOffset     Int              @map("end_offset")
+  selectedText  String           @map("selected_text")
+  contextHash   String           @map("context_hash")
+  content       String
+  type          AnnotationType   @default(NOTE)
+  status        AnnotationStatus @default(DRAFT)
+  isPublic      Boolean          @default(false) @map("is_public")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  // 關聯
+  text   LegalText @relation(fields: [textId], references: [id], onDelete: Cascade)
+  author User      @relation(fields: [authorId], references: [id])
+
+  // 索引
+  @@index([textId])
+  @@index([authorId])
+  @@index([contextHash])
+  @@map("annotations")
+}
+
+model LoginLog {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  ipAddress String   @map("ip_address")
+  userAgent String   @map("user_agent")
+  success   Boolean
+  loginAt   DateTime @default(now()) @map("login_at")
+
+  // 關聯
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([loginAt])
+  @@map("login_logs")
+} 
