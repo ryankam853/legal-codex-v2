@@ -8,6 +8,9 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        background: '#ffffff',
+        foreground: '#222222',
+        ring: '#3b82f6',
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',
@@ -100,6 +103,10 @@ module.exports = {
           '100%': { transform: 'scale(1)', opacity: '1' },
         },
       },
+      borderColor: theme => ({
+        ...theme('colors'),
+        border: '#e5e7eb',
+      }),
     },
   },
   plugins: [
